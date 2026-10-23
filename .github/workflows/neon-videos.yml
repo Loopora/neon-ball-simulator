@@ -1,0 +1,35 @@
+name: Neon TikTok videos
+on:
+  schedule:
+    - cron: '0 7,19 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser and converter
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Serve existing simulator
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/neon-server.log 2>&1 &
+          sleep 3
+      - name: Record 30-second MP4 with audio
+        run: node automation/record.cjs
+      - name: Save MP4 for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-tiktok-${{ github.run_number }}
+          path: videos/*.mp4
+          retention-days: 30
+          if-no-files-found: error
